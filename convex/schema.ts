@@ -12,7 +12,9 @@ export default defineSchema({
     name: v.string(),
     description: v.optional(v.string()),
     authorId: v.id("users"),
-  }).searchIndex("search_body", { searchField: "name" }),
+  })
+    .index("byName", ["name"])
+    .searchIndex("search_body", { searchField: "name" }),
   post: defineTable({
     subject: v.string(),
     body: v.string(),
@@ -35,12 +37,10 @@ export default defineSchema({
     postId: v.id("post"),
     userId: v.id("users"),
   })
-    .index("byPost", ["postId"])
-    .index("byUser", ["userId"]),
+    .index("byPost", ["postId", "userId"]),
   upvote: defineTable({
     postId: v.id("post"),
     userId: v.id("users"),
   })
-    .index("byPost", ["postId"])
-    .index("byUser", ["userId"]),
+    .index("byPost", ["postId", "userId"])
 });

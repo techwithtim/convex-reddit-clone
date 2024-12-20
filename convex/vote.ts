@@ -19,8 +19,9 @@ export function createToggleVoteMutation(voteType: VoteType) {
 
       const existingVote = await ctx.db
         .query(voteType)
-        .withIndex("byPost", (q) => q.eq("postId", args.postId))
-        .filter((q) => q.eq(q.field("userId"), user._id))
+        .withIndex("byPost", (q) =>
+          q.eq("postId", args.postId).eq("userId", user._id)
+        )
         .unique();
 
       if (existingVote) {
@@ -31,10 +32,10 @@ export function createToggleVoteMutation(voteType: VoteType) {
 
       const existingOppositeVote = await ctx.db
         .query(oppositeVoteType)
-        .withIndex("byPost", (q) => q.eq("postId", args.postId))
-        .filter((q) => q.eq(q.field("userId"), user._id))
+        .withIndex("byPost", (q) =>
+          q.eq("postId", args.postId).eq("userId", user._id)
+        )
         .unique();
-
       if (existingOppositeVote) {
         await ctx.db.delete(existingOppositeVote._id);
         await counts.dec(ctx, voteKey(args.postId, oppositeVoteType));
@@ -58,8 +59,9 @@ export function createHasVotedQuery(voteType: VoteType) {
 
       const vote = await ctx.db
         .query(voteType)
-        .withIndex("byPost", (q) => q.eq("postId", args.postId))
-        .filter((q) => q.eq(q.field("userId"), user._id))
+        .withIndex("byPost", (q) =>
+          q.eq("postId", args.postId).eq("userId", user._id)
+        )
         .unique();
 
       return !!vote;

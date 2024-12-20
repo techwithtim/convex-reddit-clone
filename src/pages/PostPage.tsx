@@ -4,11 +4,12 @@ import { api } from "../../convex/_generated/api";
 import PostCard from "../components/PostCard";
 import { FaArrowLeft } from "react-icons/fa";
 import "../styles/PostPage.css";
+import { Id } from "../../convex/_generated/dataModel";
 
 const PostPage = () => {
-  const { postId } = useParams();
+  const { postId } = useParams<{ postId: Id<"post"> }>();
   const navigate = useNavigate();
-  const post = useQuery(api.post.getPost, { id: postId });
+  const post = useQuery(api.post.getPost, { id: postId! });
 
   if (!post) {
     return (

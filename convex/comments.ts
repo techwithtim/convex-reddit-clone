@@ -2,6 +2,7 @@ import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
 import { getCurrentUserOrThrow } from "./users";
 import {counts, commentCountKey} from "./counter"
+import { paginationOptsValidator } from "convex/server";
 
 export const create = mutation({
   args: {
@@ -20,26 +21,22 @@ export const create = mutation({
 });
 
 export const getComments = query({
-  args: { postId: v.id("post") },
+  args: { postId: v.id("post"), paginationOpts: paginationOptsValidator },
   handler: async (ctx, args) => {
-    const comments = await ctx.db
+    const results = await ctx.db
       .query("comments")
       .withIndex("byPost", (q) => q.eq("postId", args.postId))
-      .collect();
+      .paginate(args.paginationOpts);
 
-    const authorIds = [...new Set(comments.map((comment) => comment.authorId))]
-    const authors = await Promise.all(
-        authorIds.map((id) => ctx.db.get(id))
-    )
-    const authorMap = new Map(
-        authors.map(author => [author!._id, author!.username])
-    )
-    return comments.map((comment) => ({
+    return {
+      ...results,
+      page: await Promise.all(results.page.map(async (comment) => ({
         ...comment,
         author: {
-            username: authorMap.get(comment.authorId)
+            username: (await ctx.db.get(comment.authorId))?.username
         }
-    }))
+      })))
+    };
   },
 });
 

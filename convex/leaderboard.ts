@@ -3,6 +3,9 @@ import { v } from "convex/values";
 import { counts } from "./counter";
 import { voteKey } from "./vote";
 
+// How many recent posts to fetch in the past day, max
+const LEADERBOARD_LIMIT = 1000;
+
 export const getTopPosts = query({
   args: { limit: v.optional(v.number()) },
   handler: async (ctx, args) => {
@@ -12,9 +15,11 @@ export const getTopPosts = query({
     const oneDayAgo = new Date(now.getTime() - 1000 * 60 * 60 * 24);
     const posts = await ctx.db
       .query("post")
-      .withIndex("by_creation_time")
-      .filter((q) => q.gt(q.field("_creationTime"), oneDayAgo.getTime()))
-      .collect();
+      .withIndex("by_creation_time", (q) =>
+        q.gt("_creationTime", oneDayAgo.getTime())
+      )
+      .order("desc")
+      .take(LEADERBOARD_LIMIT);
 
     const postWithScores = await Promise.all(
       posts.map(async (post) => {

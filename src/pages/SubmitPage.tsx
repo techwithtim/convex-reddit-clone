@@ -11,6 +11,15 @@ const SubmitPage = () => {
   const navigate = useNavigate();
   const subreddit = useQuery(api.subreddit.get, { name: subredditName || "" });
 
+  const [title, setTitle] = useState("");
+  const [body, setBody] = useState("");
+  const [selectedImage, setSelectedImage] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const createPost = useMutation(api.post.create);
+  const generateUploadUrl = useMutation(api.image.generateUploadUrl);
+
   if (subreddit === undefined) return <p>Loading...</p>;
 
   if (!subreddit) {
@@ -23,15 +32,6 @@ const SubmitPage = () => {
       </div>
     );
   }
-
-  const [title, setTitle] = useState("");
-  const [body, setBody] = useState("");
-  const [selectedImage, setSelectedImage] = useState<File | null>(null);
-  const [imagePreview, setImagePreview] = useState<string | null>(null);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-
-  const createPost = useMutation(api.post.create);
-  const generateUploadUrl = useMutation(api.image.generateUploadUrl);
 
   const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];

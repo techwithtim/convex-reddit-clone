@@ -3,6 +3,7 @@ import { ConvexError, v } from "convex/values";
 import { getCurrentUserOrThrow } from "./users";
 import { Doc, Id } from "./_generated/dataModel";
 import { counts, postCountKey } from "./counter";
+import { paginationOptsValidator, PaginationResult } from "convex/server";
 
 type EnrichedPost = Omit<Doc<"post">, "subreddit"> & {
   author: { username: string } | undefined;
@@ -19,6 +20,7 @@ const ERROR_MESSAGES = {
   POST_NOT_FOUND: "Post not found",
   SUBREDDIT_NOT_FOUND: "Subreddit not found",
   UNAUTHORIZED_DELETE: "You can't delete this post",
+  USER_NOT_FOUND: "User not found",
 } as const;
 
 export const create = mutation({
@@ -81,40 +83,46 @@ export const getPost = query({
 });
 
 export const getSubredditPosts = query({
-  args: { subredditName: v.string() },
-  handler: async (ctx, args): Promise<EnrichedPost[]> => {
+  args: { subredditName: v.string(), paginationOpts: paginationOptsValidator },
+  handler: async (ctx, args): Promise<PaginationResult<EnrichedPost>> => {
     const subreddit = await ctx.db
       .query("subreddit")
-      .filter((q) => q.eq(q.field("name"), args.subredditName))
+      .withIndex("byName", (q) => q.eq("name", args.subredditName))
       .unique();
 
-    if (!subreddit) return [];
+    if (!subreddit) throw new ConvexError({message: ERROR_MESSAGES.SUBREDDIT_NOT_FOUND})
 
     const posts = await ctx.db
       .query("post")
       .withIndex("bySubreddit", (q) => q.eq("subreddit", subreddit._id))
-      .collect();
+      .paginate(args.paginationOpts);
 
-    return getEnrichedPosts(ctx, posts);
+    return {
+      ...posts,
+      page: await getEnrichedPosts(ctx, posts.page)
+    }
   },
 });
 
 export const userPosts = query({
-  args: { authorUsername: v.string() },
-  handler: async (ctx, args): Promise<EnrichedPost[]> => {
+  args: { authorUsername: v.string(), paginationOpts: paginationOptsValidator },
+  handler: async (ctx, args): Promise<PaginationResult<EnrichedPost>> => {
     const user = await ctx.db
       .query("users")
-      .filter((q) => q.eq(q.field("username"), args.authorUsername))
+      .withIndex("byUsername", (q) => q.eq("username", args.authorUsername))
       .unique();
 
-    if (!user) return [];
+    if (!user) throw new ConvexError({message: ERROR_MESSAGES.USER_NOT_FOUND})
 
     const posts = await ctx.db
       .query("post")
       .withIndex("byAuthor", (q) => q.eq("authorId", user._id))
-      .collect();
+      .paginate(args.paginationOpts);
 
-    return getEnrichedPosts(ctx, posts);
+    return {
+      ...posts,
+      page: await getEnrichedPosts(ctx, posts.page)
+    }
   },
 });
 
@@ -142,7 +150,7 @@ export const search = query({
 
     const subredditObj = await ctx.db
       .query("subreddit")
-      .filter((q) => q.eq(q.field("name"), args.subreddit))
+      .withIndex("byName", (q) => q.eq("name", args.subreddit))
       .unique();
 
     if (!subredditObj) return [];
